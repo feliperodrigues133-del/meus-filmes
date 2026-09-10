@@ -622,6 +622,7 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let dbUser = null;
 let unsubFilmes = null;
 let unsubColecoes = null;
+let ignorarSyncLocal = false;
 
 // ===== ESTADO =====
 let filmes = JSON.parse(localStorage.getItem('filmes') || '[]');
@@ -671,66 +672,110 @@ async function logout() {
   try { await auth.signOut(); } catch(e) {}
 }
 
+// ===== SINCRONIZAÇÃO COMPLETA (SALVA + APAGA REMOVIDOS) =====
 async function salvarTudoNaNuvem() {
   if (!dbUser) return;
   const userRef = db.collection('users').doc(dbUser.uid);
   const filmesRef = userRef.collection('filmes');
   const colecoesRef = userRef.collection('colecoes');
 
-  // ===== FILMES: apaga os que sumiram e grava os atuais =====
+  // 1) Apagar filmes na nuvem que não existem mais localmente
   try {
+    ignorarSyncLocal = true;
     const snap = await filmesRef.get();
     const idsLocais = new Set(filmes.map(f => String(f.id)));
 
-    const deletes = [];
+    const deletandoFilmes = [];
     snap.docs.forEach(doc => {
       if (!idsLocais.has(doc.id)) {
-        deletes.push(doc.ref.delete());
+        deletandoFilmes.push(doc.ref.delete());
       }
     });
-    await Promise.all(deletes);
+    await Promise.all(deletandoFilmes);
 
-    const writes = filmes.map(f => {
+    // 2) Salvar/atualizar todos os filmes locais na nuvem
+    const gravandoFilmes = filmes.map(f => {
       const { id, ...dados } = f;
       return filmesRef.doc(String(id)).set(dados);
     });
-    await Promise.all(writes);
+    await Promise.all(gravandoFilmes);
+    ignorarSyncLocal = false;
   } catch (e) {
+    ignorarSyncLocal = false;
     console.warn('Erro ao sincronizar filmes', e);
   }
 
-  // ===== COLEÇÕES: mesma coisa =====
+  // 3) Apagar coleções na nuvem que não existem mais localmente
   try {
     const snapC = await colecoesRef.get();
-    const idsLocaisC = new Set(colecoes.map(c => String(c.id)));
-
-    const deletesC = [];
+    const idsColecoesLocais = new Set(colecoes.map(c => String(c.id)));
+    const deletandoColecoes = [];
     snapC.docs.forEach(doc => {
-      if (!idsLocaisC.has(doc.id)) {
-        deletesC.push(doc.ref.delete());
+      if (!idsColecoesLocais.has(doc.id)) {
+        deletandoColecoes.push(doc.ref.delete());
       }
     });
-    await Promise.all(deletesC);
+    await Promise.all(deletandoColecoes);
 
-    const writesC = colecoes.map(c => {
+    // 4) Salvar/atualizar todas as coleções locais na nuvem
+    const gravandoColecoes = colecoes.map(c => {
       const { id, ...dados } = c;
       return colecoesRef.doc(String(id)).set(dados);
     });
-    await Promise.all(writesC);
+    await Promise.all(gravandoColecoes);
   } catch (e) {
     console.warn('Erro ao sincronizar coleções', e);
   }
 
-  // ===== CONFIG =====
+  // 5) Salvar config na nuvem
   userRef.set({ config: config }, { merge: true }).catch(e => console.warn('Erro ao salvar config', e));
 
-  const syncStatus = document.getElementById('syncStatus');
-  if (syncStatus) {
-    syncStatus.className = 'sync-status online';
-    setTimeout(() => { syncStatus.className = 'sync-status'; }, 3000);
+  // 6) Feedback visual
+  const st = document.getElementById('syncStatus');
+  if (st) {
+    st.className = 'sync-status online';
+    setTimeout(() => { st.className = 'sync-status'; }, 3000);
   }
 }
 
+auth.onAuthStateChanged(async user => {
+  dbUser = user;
+  atualizarUIUsuario();
+
+  if (user) {
+    const userRef = db.collection('users').doc(user.uid);
+    
+    if (unsubFilmes) unsubFilmes();
+    unsubFilmes = userRef.collection('filmes').onSnapshot(snap => {
+      if (ignorarSyncLocal) return;
+      const filmesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
+      filmes = filmesNuvem;
+      localStorage.setItem('filmes', JSON.stringify(filmes));
+      renderizar();
+    });
+    
+    if (unsubColecoes) unsubColecoes();
+    unsubColecoes = userRef.collection('colecoes').onSnapshot(snap => {
+      if (ignorarSyncLocal) return;
+      const colecoesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
+      if (colecoesNuvem.length > 0) {
+        colecoes = colecoesNuvem;
+        localStorage.setItem('colecoes', JSON.stringify(colecoes));
+      }
+    });
+    
+    salvarTudoNaNuvem();
+    
+  } else {
+    if (unsubFilmes) { unsubFilmes(); unsubFilmes = null; }
+    if (unsubColecoes) { unsubColecoes(); unsubColecoes = null; }
+    try {
+      const f = JSON.parse(localStorage.getItem('filmes') || '[]');
+      filmes = f;
+      const c = JSON.parse(localStorage.getItem('colecoes') || '[]');
+      colecoes = c;
+    } catch(e) {}
+  }
   
   renderizar();
 });
@@ -1335,7 +1380,6 @@ async function procurarDesafio() {
       return;
     }
     
-    // Verificação de duplicatas mais inteligente
     const existentes = new Set(filmes.map(f => f.titulo.toLowerCase().trim()));
     const disponiveis = data.results.filter(m => {
       const tituloPT = m.title.toLowerCase().trim();
