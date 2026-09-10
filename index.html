@@ -181,7 +181,7 @@ input:focus, select:focus, textarea:focus {
   border: 2px solid var(--accent);
 }
 .movie-card.pinned::before {
-  content: '📌 Fixado';
+  content: ' Fixado';
   position: absolute;
   top: 8px;
   right: 8px;
@@ -435,7 +435,7 @@ input:focus, select:focus, textarea:focus {
     <div class="user-info" id="userInfo">
       <img class="user-photo" id="userPhoto" src="" alt="">
       <span class="user-name" id="userName"></span>
-      <button class="btn btn-logout btn-small" onclick="logout()">🚪 Sair</button>
+      <button class="btn btn-logout btn-small" onclick="logout()"> Sair</button>
       <span class="sync-status online" id="syncStatus">☁️ Sincronizado</span>
     </div>
   </div>
@@ -446,16 +446,17 @@ input:focus, select:focus, textarea:focus {
     <button class="btn btn-edit" onclick="abrirModalConfig()">⚙️ Config</button>
     <button class="btn btn-edit" onclick="alternarTema()">🌓 Tema</button>
     <button class="btn btn-export" onclick="exportarDados()">💾 Exportar</button>
-    <button class="btn btn-export" onclick="document.getElementById('importFile').click()">📥 Importar</button>
-    <button class="btn btn-add" onclick="iniciarRoleta()"> Sortear</button>
+    <button class="btn btn-export" onclick="document.getElementById('importFile').click()"> Importar</button>
+    <button class="btn btn-add" onclick="iniciarRoleta()">🎲 Sortear</button>
     <button class="btn btn-edit" onclick="compartilharColecao()">🔗 Compartilhar</button>
+    <button class="btn btn-danger" onclick="limparDuplicatas()">🧹 Limpar Duplicatas</button>
     <input type="file" id="importFile" style="display:none" accept=".json" onchange="importarDados(event)">
   </div>
 </header>
 
 <div id="desafioBanner" class="desafio-banner" style="display:none;">
   <div style="font-size:1.1rem;margin-bottom:8px;">
-    <span style="font-size:1.4rem;">🎯</span> <strong>Desafio da Semana:</strong>
+    <span style="font-size:1.4rem;"></span> <strong>Desafio da Semana:</strong>
     <span id="desafioTexto" style="color:var(--accent);font-weight:700;"></span>
   </div>
   <button class="btn btn-add btn-small" onclick="sortearDesafio()">🎲 Novo Desafio</button>
@@ -542,7 +543,7 @@ input:focus, select:focus, textarea:focus {
 
 <div class="modal-overlay" id="modalAPI">
   <div class="modal">
-    <h2>🔍 Buscar no TMDB</h2>
+    <h2> Buscar no TMDB</h2>
     <div class="form-group">
       <input type="text" id="apiSearch" placeholder="Nome do filme..." oninput="debounceBuscar()">
     </div>
@@ -555,7 +556,7 @@ input:focus, select:focus, textarea:focus {
 
 <div class="modal-overlay" id="modalConfig">
   <div class="modal">
-    <h2>️ Configurações</h2>
+    <h2>⚙️ Configurações</h2>
     <div class="form-group">
       <label>Chave da API TMDB (opcional)</label>
       <input type="text" id="configTmdbKey" placeholder="Cole sua chave aqui...">
@@ -630,6 +631,7 @@ let abaAtual = 'para_assistir';
 let filmeEditando = null;
 let filmeRoleta = null;
 let debounceTimer = null;
+let idCounter = Date.now();
 
 // ===== PERSISTÊNCIA =====
 function salvar() {
@@ -780,7 +782,7 @@ function salvarFilme() {
   const titulo = document.getElementById('filmeTitulo').value.trim();
   if (!titulo) return alert('Informe o título!');
   const dados = {
-    id: filmeEditando?.id || Date.now(),
+    id: filmeEditando?.id || ++idCounter,
     titulo,
     capa: document.getElementById('filmeCapa').value.trim(),
     ano: document.getElementById('filmeAno').value,
@@ -838,6 +840,35 @@ function toggleColecaoFilme(filmeId, colecaoId) {
   renderizar();
 }
 
+// ===== LIMPAR DUPLICATAS =====
+function limparDuplicatas() {
+  const vistos = new Set();
+  const duplicatas = [];
+  const unicos = [];
+  
+  filmes.forEach(f => {
+    const chave = f.titulo.toLowerCase().trim();
+    if (vistos.has(chave)) {
+      duplicatas.push(f);
+    } else {
+      vistos.add(chave);
+      unicos.push(f);
+    }
+  });
+  
+  if (duplicatas.length === 0) {
+    alert('✅ Nenhuma duplicata encontrada!');
+    return;
+  }
+  
+  if (confirm(`🧹 Encontradas ${duplicatas.length} duplicata(s). Deseja remover?\n\nFilmes duplicados:\n${duplicatas.map(f => '• ' + f.titulo).join('\n')}`)) {
+    filmes = unicos;
+    salvar();
+    renderizar();
+    alert('✅ Duplicatas removidas!');
+  }
+}
+
 // ===== RENDERIZAÇÃO =====
 function posterHTML(f) {
   if (f.capa) {
@@ -884,7 +915,7 @@ function renderizar() {
           <button class="btn btn-edit icon" onclick="toggleFixar(${f.id})" title="Fixar">${f.fixado ? '📍' : '📌'}</button>
           <button class="btn btn-edit" onclick="editarFilme(${f.id})">✏️</button>
           <button class="btn btn-edit" onclick="mudarStatus(${f.id}, '${f.status === 'assistido' || f.status === 'favorito' ? 'para_assistir' : 'assistido'}')">✅</button>
-          <button class="btn btn-danger icon" onclick="excluirFilme(${f.id})">️</button>
+          <button class="btn btn-danger icon" onclick="excluirFilme(${f.id})">🗑️</button>
         </div>
       </div>
     </div>
@@ -899,7 +930,7 @@ function statusLabel(s) {
 function criarColecao() {
   const nome = document.getElementById('novaColecao').value.trim();
   if (!nome) return;
-  colecoes.push({ id: Date.now(), nome });
+  colecoes.push({ id: ++idCounter, nome });
   document.getElementById('novaColecao').value = '';
   salvar();
   renderizarColecoes();
@@ -971,7 +1002,7 @@ function renderizarEstatisticas() {
       </div>
       
       <div class="panel">
-        <h3 style="margin-bottom:12px;">📅 Filmes por Mês</h3>
+        <h3 style="margin-bottom:12px;"> Filmes por Mês</h3>
         <div class="months-chart">
           ${porMes.map((v, i) => `
             <div class="month-wrapper">
@@ -1067,9 +1098,15 @@ async function buscarAPI() {
 }
 
 function adicionarDoTMDB(m) {
+  const tituloPT = m.title;
+  const duplicata = filmes.find(f => f.titulo.toLowerCase() === tituloPT.toLowerCase());
+  if (duplicata) {
+    alert('⚠️ Este filme já está na sua lista!');
+    return;
+  }
   filmes.push({
-    id: Date.now(),
-    titulo: m.title,
+    id: ++idCounter,
+    titulo: tituloPT,
     capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
     ano: m.release_date ? m.release_date.split('-')[0] : '',
     genero: '',
@@ -1126,8 +1163,13 @@ async function abrirSugestoes() {
 }
 
 function adicionarSugestao(m) {
+  const duplicata = filmes.find(f => f.titulo.toLowerCase() === m.title.toLowerCase());
+  if (duplicata) {
+    alert('⚠️ Este filme já está na sua lista!');
+    return;
+  }
   filmes.push({
-    id: Date.now() + Math.random(),
+    id: ++idCounter,
     titulo: m.title,
     capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
     ano: m.release_date ? m.release_date.split('-')[0] : '',
@@ -1182,7 +1224,7 @@ function iniciarRoleta() {
   }, 100);
   
   setTimeout(() => {
-    document.getElementById('roletaResult').innerHTML = ` <strong>${vencedor.titulo}</strong>${vencedor.ano ? ' (' + vencedor.ano + ')' : ''}`;
+    document.getElementById('roletaResult').innerHTML = `🎉 <strong>${vencedor.titulo}</strong>${vencedor.ano ? ' (' + vencedor.ano + ')' : ''}`;
     document.getElementById('btnMarcarAssistido').style.display = 'inline-flex';
   }, 4200);
 }
@@ -1239,7 +1281,7 @@ async function procurarDesafio() {
   const texto = document.getElementById('desafioTexto').textContent;
   
   if (!config.tmdbKey) {
-    alert('️ Configure sua chave TMDB em ⚙️ Config primeiro!');
+    alert('⚠️ Configure sua chave TMDB em ⚙️ Config primeiro!');
     abrirModalConfig();
     return;
   }
@@ -1289,8 +1331,12 @@ async function procurarDesafio() {
       return;
     }
     
-    const existentes = new Set(filmes.map(f => f.titulo.toLowerCase()));
-    const disponiveis = data.results.filter(m => !existentes.has(m.title.toLowerCase()));
+    // Verificação de duplicatas mais inteligente
+    const existentes = new Set(filmes.map(f => f.titulo.toLowerCase().trim()));
+    const disponiveis = data.results.filter(m => {
+      const tituloPT = m.title.toLowerCase().trim();
+      return !existentes.has(tituloPT);
+    });
     
     if (disponiveis.length === 0) {
       alert('🎬 Você já tem todos os filmes desse tema! Tente outro desafio.');
@@ -1300,7 +1346,7 @@ async function procurarDesafio() {
     const filme = disponiveis[Math.floor(Math.random() * disponiveis.length)];
     
     filmes.push({
-      id: Date.now(),
+      id: ++idCounter,
       titulo: filme.title,
       capa: filme.poster_path ? 'https://image.tmdb.org/t/p/w342' + filme.poster_path : '',
       ano: filme.release_date ? filme.release_date.split('-')[0] : '',
