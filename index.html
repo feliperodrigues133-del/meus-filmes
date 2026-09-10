@@ -102,7 +102,6 @@ header p { color: var(--text-muted); font-size: 0.9rem; }
 .btn-small { padding: 6px 10px; font-size: 0.8rem; }
 .btn-login { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
 
-/* Área do usuário */
 .user-area {
   display: flex;
   justify-content: center;
@@ -405,6 +404,18 @@ input:focus, select:focus, textarea:focus {
 }
 .sync-status.online { display: block; border-color: var(--success); color: var(--success); }
 .sync-status.offline { display: block; border-color: var(--danger); color: var(--danger); }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 @media (max-width: 600px) {
   header h1 { font-size: 1.4rem; }
   .movies-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
@@ -419,7 +430,6 @@ input:focus, select:focus, textarea:focus {
   <h1>🎬 Meus Filmes</h1>
   <p>Sua coletânea cinematográfica pessoal</p>
   
-  <!-- Área do usuário -->
   <div class="user-area" id="userArea">
     <button class="btn btn-login" id="btnLogin" onclick="loginGoogle()">🔑 Entrar com Google</button>
     <div class="user-info" id="userInfo">
@@ -437,13 +447,12 @@ input:focus, select:focus, textarea:focus {
     <button class="btn btn-edit" onclick="alternarTema()">🌓 Tema</button>
     <button class="btn btn-export" onclick="exportarDados()">💾 Exportar</button>
     <button class="btn btn-export" onclick="document.getElementById('importFile').click()">📥 Importar</button>
-    <button class="btn btn-add" onclick="iniciarRoleta()">🎲 Sortear</button>
+    <button class="btn btn-add" onclick="iniciarRoleta()"> Sortear</button>
     <button class="btn btn-edit" onclick="compartilharColecao()">🔗 Compartilhar</button>
     <input type="file" id="importFile" style="display:none" accept=".json" onchange="importarDados(event)">
   </div>
 </header>
 
-<!-- Desafio Semanal -->
 <div id="desafioBanner" class="desafio-banner" style="display:none;">
   <div style="font-size:1.1rem;margin-bottom:8px;">
     <span style="font-size:1.4rem;">🎯</span> <strong>Desafio da Semana:</strong>
@@ -453,7 +462,6 @@ input:focus, select:focus, textarea:focus {
   <button class="btn btn-api btn-small" onclick="procurarDesafio()">🔍 Encontrar</button>
 </div>
 
-<!-- Filme do Dia -->
 <div id="filmeDia" class="desafio-banner" style="display:none;">
   <div style="font-size:1.1rem;">
     <span style="font-size:1.4rem;">🎬</span> <strong>Filme do Dia:</strong>
@@ -471,7 +479,7 @@ input:focus, select:focus, textarea:focus {
 </div>
 
 <div class="panel" id="painelColecoes" style="display:none;">
-  <h3 style="margin-bottom:10px;">📁 Minhas Coleções</h3>
+  <h3 style="margin-bottom:10px;"> Minhas Coleções</h3>
   <div style="display:flex;gap:8px;margin-bottom:12px;">
     <input type="text" id="novaColecao" placeholder="Nome da nova coleção...">
     <button class="btn btn-add" onclick="criarColecao()">Criar</button>
@@ -485,7 +493,6 @@ input:focus, select:focus, textarea:focus {
 
 <div id="lista" class="movies-grid"></div>
 
-<!-- Modal Adicionar/Editar -->
 <div class="modal-overlay" id="modalFilme">
   <div class="modal">
     <h2 id="modalTitulo">Adicionar Filme</h2>
@@ -533,7 +540,6 @@ input:focus, select:focus, textarea:focus {
   </div>
 </div>
 
-<!-- Modal API TMDB -->
 <div class="modal-overlay" id="modalAPI">
   <div class="modal">
     <h2>🔍 Buscar no TMDB</h2>
@@ -547,10 +553,9 @@ input:focus, select:focus, textarea:focus {
   </div>
 </div>
 
-<!-- Modal Config -->
 <div class="modal-overlay" id="modalConfig">
   <div class="modal">
-    <h2>⚙️ Configurações</h2>
+    <h2>️ Configurações</h2>
     <div class="form-group">
       <label>Chave da API TMDB (opcional)</label>
       <input type="text" id="configTmdbKey" placeholder="Cole sua chave aqui...">
@@ -573,7 +578,6 @@ input:focus, select:focus, textarea:focus {
   </div>
 </div>
 
-<!-- Modal Sugestões -->
 <div class="modal-overlay" id="modalSugestoes">
   <div class="modal">
     <h2>💡 Sugestões baseadas nos seus favoritos</h2>
@@ -585,7 +589,6 @@ input:focus, select:focus, textarea:focus {
   </div>
 </div>
 
-<!-- Roleta -->
 <div class="roleta-overlay" id="roletaOverlay">
   <div class="roleta-container">
     <div class="roleta-pointer">▼</div>
@@ -618,7 +621,6 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let dbUser = null;
 let unsubFilmes = null;
 let unsubColecoes = null;
-let carregadoDaNuvem = false;
 
 // ===== ESTADO =====
 let filmes = JSON.parse(localStorage.getItem('filmes') || '[]');
@@ -634,8 +636,6 @@ function salvar() {
   localStorage.setItem('filmes', JSON.stringify(filmes));
   localStorage.setItem('colecoes', JSON.stringify(colecoes));
   localStorage.setItem('config', JSON.stringify(config));
-  
-  // Salva na nuvem se logado
   if (dbUser) salvarTudoNaNuvem();
 }
 
@@ -669,31 +669,26 @@ async function logout() {
   try { await auth.signOut(); } catch(e) {}
 }
 
-// ===== FIREBASE: SALSAR NA NUVEM =====
 function salvarTudoNaNuvem() {
   if (!dbUser) return;
   const userRef = db.collection('users').doc(dbUser.uid);
   
-  // Salva filmes (um documento por filme)
   const filmePromises = filmes.map(f => {
     const { id, ...dados } = f;
     return userRef.collection('filmes').doc(String(id)).set(dados).catch(e => console.warn('Erro ao salvar filme', e));
   });
   
-  // Salva coleções
   const colecaoPromises = colecoes.map(c => {
     const { id, ...dados } = c;
     return userRef.collection('colecoes').doc(String(id)).set(dados).catch(e => console.warn('Erro ao salvar coleção', e));
   });
   
-  // Salva config
   userRef.set({ config: config }, { merge: true }).catch(e => console.warn('Erro ao salvar config', e));
   
   document.getElementById('syncStatus').className = 'sync-status online';
   setTimeout(() => document.getElementById('syncStatus').className = 'sync-status', 3000);
 }
 
-// ===== FIREBASE: AUTH STATE =====
 auth.onAuthStateChanged(async user => {
   dbUser = user;
   atualizarUIUsuario();
@@ -701,36 +696,28 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     const userRef = db.collection('users').doc(user.uid);
     
-    // Ativa listener de filmes
     if (unsubFilmes) unsubFilmes();
     unsubFilmes = userRef.collection('filmes').onSnapshot(snap => {
-      if (carregadoDaNuvem) return;
-      if (snap.empty && filmes.length === 0) return;
-      
       const filmesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
       filmes = filmesNuvem;
-      carregarFilmesLocais();
-      salevarLocalmente();
+      localStorage.setItem('filmes', JSON.stringify(filmes));
+      renderizar();
     });
     
-    // Ativa listener de coleções
     if (unsubColecoes) unsubColecoes();
     unsubColecoes = userRef.collection('colecoes').onSnapshot(snap => {
-      if (carregadoDaNuvem) return;
       const colecoesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
       if (colecoesNuvem.length > 0) {
         colecoes = colecoesNuvem;
+        localStorage.setItem('colecoes', JSON.stringify(colecoes));
       }
     });
     
-    // Estrutura de dados: sempre salva local
-    // (a funcao salvar() já cuida disso e chama salvarTudoNaNuvem)
     salvarTudoNaNuvem();
     
   } else {
     if (unsubFilmes) { unsubFilmes(); unsubFilmes = null; }
     if (unsubColecoes) { unsubColecoes(); unsubColecoes = null; }
-    carregadoDaNuvem = false;
     try {
       const f = JSON.parse(localStorage.getItem('filmes') || '[]');
       filmes = f;
@@ -741,19 +728,6 @@ auth.onAuthStateChanged(async user => {
   
   renderizar();
 });
-
-function carregarFilmesLocais() {
-  // Merge de filmes locais não existentes na nuvem
-  const idsExistentes = new Set(filmes.map(f => f.id));
-  const locais = JSON.parse(localStorage.getItem('filmes') || '[]');
-  // Migração opcional: adiciona os que não existem
-}
-
-function salevarLocalmente() {
-  localStorage.setItem('filmes', JSON.stringify(filmes));
-  localStorage.setItem('colecoes', JSON.stringify(colecoes));
-  renderizar();
-}
 
 // ===== TEMA =====
 function aplicarTema(tema) {
@@ -867,7 +841,7 @@ function toggleColecaoFilme(filmeId, colecaoId) {
 // ===== RENDERIZAÇÃO =====
 function posterHTML(f) {
   if (f.capa) {
-    return `<div class="movie-poster"><img src="${f.capa}" onerror="this.parentElement.classList.add('no-poster');this.remove();"><div class="movie-poster-placeholder" style="display:none;">🎬</div></div>`;
+    return `<div class="movie-poster"><img src="${f.capa}" onerror="this.parentElement.classList.add('no-poster');this.remove();"><div class="movie-poster-placeholder" style="display:none;"></div></div>`;
   }
   return `<div class="movie-poster no-poster">🎬</div>`;
 }
@@ -910,7 +884,7 @@ function renderizar() {
           <button class="btn btn-edit icon" onclick="toggleFixar(${f.id})" title="Fixar">${f.fixado ? '📍' : '📌'}</button>
           <button class="btn btn-edit" onclick="editarFilme(${f.id})">✏️</button>
           <button class="btn btn-edit" onclick="mudarStatus(${f.id}, '${f.status === 'assistido' || f.status === 'favorito' ? 'para_assistir' : 'assistido'}')">✅</button>
-          <button class="btn btn-danger icon" onclick="excluirFilme(${f.id})">🗑️</button>
+          <button class="btn btn-danger icon" onclick="excluirFilme(${f.id})">️</button>
         </div>
       </div>
     </div>
@@ -1208,7 +1182,7 @@ function iniciarRoleta() {
   }, 100);
   
   setTimeout(() => {
-    document.getElementById('roletaResult').innerHTML = `🎉 <strong>${vencedor.titulo}</strong>${vencedor.ano ? ' (' + vencedor.ano + ')' : ''}`;
+    document.getElementById('roletaResult').innerHTML = ` <strong>${vencedor.titulo}</strong>${vencedor.ano ? ' (' + vencedor.ano + ')' : ''}`;
     document.getElementById('btnMarcarAssistido').style.display = 'inline-flex';
   }, 4200);
 }
@@ -1261,11 +1235,122 @@ function carregarDesafio() {
   }
 }
 
-function procurarDesafio() {
+async function procurarDesafio() {
   const texto = document.getElementById('desafioTexto').textContent;
-  document.getElementById('apiSearch').value = texto.replace('Assista ', '').replace('um filme ', '');
-  abrirModalAPI();
-  setTimeout(buscarAPI, 100);
+  
+  if (!config.tmdbKey) {
+    alert('️ Configure sua chave TMDB em ⚙️ Config primeiro!');
+    abrirModalConfig();
+    return;
+  }
+  
+  const queries = {
+    'animação': 'animation',
+    'anos 80': '1980',
+    'comédia': 'comedy',
+    'suspense': 'thriller',
+    'mais antigo que você': 'classic',
+    'título de uma palavra': 'one word title',
+    'guerra ou histórico': 'war history',
+    'nota acima de 8': 'top rated',
+    'outro país': 'international',
+    'fantasia ou ficção científica': 'sci-fi fantasy',
+    'premiado no Oscar': 'oscar winner',
+    'mais de 2 horas': 'long movie',
+    'preto e branco': 'black and white',
+    'baseado em livro': 'based on book'
+  };
+  
+  let query = '';
+  for (const [tema, q] of Object.entries(queries)) {
+    if (texto.toLowerCase().includes(tema)) {
+      query = q;
+      break;
+    }
+  }
+  
+  if (!query) {
+    alert('❌ Não consegui identificar o tema. Tente outro desafio!');
+    return;
+  }
+  
+  const banner = document.getElementById('desafioBanner');
+  const btnOriginal = banner.querySelector('button[onclick="procurarDesafio()"]');
+  const textoOriginal = btnOriginal.textContent;
+  btnOriginal.textContent = '⏳ Buscando...';
+  btnOriginal.disabled = true;
+  
+  try {
+    const r = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${config.tmdbKey}&language=pt-BR&query=${encodeURIComponent(query)}&include_adult=false`);
+    const data = await r.json();
+    
+    if (!data.results || data.results.length === 0) {
+      alert('😕 Nenhum filme encontrado para esse tema. Tente outro desafio!');
+      return;
+    }
+    
+    const existentes = new Set(filmes.map(f => f.titulo.toLowerCase()));
+    const disponiveis = data.results.filter(m => !existentes.has(m.title.toLowerCase()));
+    
+    if (disponiveis.length === 0) {
+      alert('🎬 Você já tem todos os filmes desse tema! Tente outro desafio.');
+      return;
+    }
+    
+    const filme = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+    
+    filmes.push({
+      id: Date.now(),
+      titulo: filme.title,
+      capa: filme.poster_path ? 'https://image.tmdb.org/t/p/w342' + filme.poster_path : '',
+      ano: filme.release_date ? filme.release_date.split('-')[0] : '',
+      genero: '',
+      nota: 0,
+      status: 'para_assistir',
+      data: '',
+      comentario: '',
+      fixado: false,
+      colecoes: []
+    });
+    salvar();
+    renderizar();
+    
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #f5c518, #e0b010);
+      color: #000;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(245,197,24,0.4);
+      z-index: 3000;
+      text-align: center;
+      animation: slideDown 0.4s ease;
+      max-width: 90%;
+    `;
+    overlay.innerHTML = `
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:6px;">🎯 Filme sugerido para o desafio!</div>
+      <div style="font-size:1.3rem;font-weight:800;">${filme.title} ${filme.release_date ? '(' + filme.release_date.split('-')[0] + ')' : ''}</div>
+      <div style="font-size:0.85rem;margin-top:6px;opacity:0.8;">Adicionado à sua lista "Para Assistir" ✨</div>
+    `;
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.3s';
+      setTimeout(() => overlay.remove(), 300);
+    }, 4000);
+    
+  } catch (e) {
+    alert('❌ Erro ao buscar filme. Tente novamente!');
+    console.error(e);
+  } finally {
+    btnOriginal.textContent = textoOriginal;
+    btnOriginal.disabled = false;
+  }
 }
 
 // ===== FILME DO DIA =====
