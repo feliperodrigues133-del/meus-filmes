@@ -671,62 +671,66 @@ async function logout() {
   try { await auth.signOut(); } catch(e) {}
 }
 
-function salvarTudoNaNuvem() {
+async function salvarTudoNaNuvem() {
   if (!dbUser) return;
   const userRef = db.collection('users').doc(dbUser.uid);
-  
-  const filmePromises = filmes.map(f => {
-    const { id, ...dados } = f;
-    return userRef.collection('filmes').doc(String(id)).set(dados).catch(e => console.warn('Erro ao salvar filme', e));
-  });
-  
-  const colecaoPromises = colecoes.map(c => {
-    const { id, ...dados } = c;
-    return userRef.collection('colecoes').doc(String(id)).set(dados).catch(e => console.warn('Erro ao salvar coleção', e));
-  });
-  
-  userRef.set({ config: config }, { merge: true }).catch(e => console.warn('Erro ao salvar config', e));
-  
-  document.getElementById('syncStatus').className = 'sync-status online';
-  setTimeout(() => document.getElementById('syncStatus').className = 'sync-status', 3000);
-}
+  const filmesRef = userRef.collection('filmes');
+  const colecoesRef = userRef.collection('colecoes');
 
-auth.onAuthStateChanged(async user => {
-  dbUser = user;
-  atualizarUIUsuario();
+  // ===== FILMES: apaga os que sumiram e grava os atuais =====
+  try {
+    const snap = await filmesRef.get();
+    const idsLocais = new Set(filmes.map(f => String(f.id)));
 
-  if (user) {
-    const userRef = db.collection('users').doc(user.uid);
-    
-    if (unsubFilmes) unsubFilmes();
-    unsubFilmes = userRef.collection('filmes').onSnapshot(snap => {
-      const filmesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
-      filmes = filmesNuvem;
-      localStorage.setItem('filmes', JSON.stringify(filmes));
-      renderizar();
-    });
-    
-    if (unsubColecoes) unsubColecoes();
-    unsubColecoes = userRef.collection('colecoes').onSnapshot(snap => {
-      const colecoesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
-      if (colecoesNuvem.length > 0) {
-        colecoes = colecoesNuvem;
-        localStorage.setItem('colecoes', JSON.stringify(colecoes));
+    const deletes = [];
+    snap.docs.forEach(doc => {
+      if (!idsLocais.has(doc.id)) {
+        deletes.push(doc.ref.delete());
       }
     });
-    
-    salvarTudoNaNuvem();
-    
-  } else {
-    if (unsubFilmes) { unsubFilmes(); unsubFilmes = null; }
-    if (unsubColecoes) { unsubColecoes(); unsubColecoes = null; }
-    try {
-      const f = JSON.parse(localStorage.getItem('filmes') || '[]');
-      filmes = f;
-      const c = JSON.parse(localStorage.getItem('colecoes') || '[]');
-      colecoes = c;
-    } catch(e) {}
+    await Promise.all(deletes);
+
+    const writes = filmes.map(f => {
+      const { id, ...dados } = f;
+      return filmesRef.doc(String(id)).set(dados);
+    });
+    await Promise.all(writes);
+  } catch (e) {
+    console.warn('Erro ao sincronizar filmes', e);
   }
+
+  // ===== COLEÇÕES: mesma coisa =====
+  try {
+    const snapC = await colecoesRef.get();
+    const idsLocaisC = new Set(colecoes.map(c => String(c.id)));
+
+    const deletesC = [];
+    snapC.docs.forEach(doc => {
+      if (!idsLocaisC.has(doc.id)) {
+        deletesC.push(doc.ref.delete());
+      }
+    });
+    await Promise.all(deletesC);
+
+    const writesC = colecoes.map(c => {
+      const { id, ...dados } = c;
+      return colecoesRef.doc(String(id)).set(dados);
+    });
+    await Promise.all(writesC);
+  } catch (e) {
+    console.warn('Erro ao sincronizar coleções', e);
+  }
+
+  // ===== CONFIG =====
+  userRef.set({ config: config }, { merge: true }).catch(e => console.warn('Erro ao salvar config', e));
+
+  const syncStatus = document.getElementById('syncStatus');
+  if (syncStatus) {
+    syncStatus.className = 'sync-status online';
+    setTimeout(() => { syncStatus.className = 'sync-status'; }, 3000);
+  }
+}
+
   
   renderizar();
 });
