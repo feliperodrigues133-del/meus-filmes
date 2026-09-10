@@ -1,1193 +1,198 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meus Filmes</title>
-<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTWV1cyBGaWxtZXMiLCJzaG9ydF9uYW1lIjoiRmlsbWVzIiwiZGVzY3JpcHRpb24iOiJTdWEgY29sZcOnw6NvIGNpbmVtYXRvZ3LDoWZpY2EgcGVzc29hbCIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTBhMGYiLCJ0aGVtZV9jb2xvciI6IiNmNWM1MTgiLCJzdGFydF91cmwiOiIuIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInPjxyZWN0IHdpZHRoPScxOTInIGhlaWdodD0nMTkyJyBmaWxsPSclMjMwYTBhMGYnLz48dGV4dCB4PSc5NicgeT0nMTMwJyBmb250LXNpemU9JzEwMCcgdGV4dC1hbmNob3I9J21pZGRsZScgZmlsbD0nJTIzZjVjNTE4Jz5GPC90ZXh0Pjwvc3ZnPiIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
-<meta name="theme-color" content="#f5c518">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>
-:root {
-  --bg: #0a0a0f;
-  --bg-panel: #15151f;
-  --bg-card: #1e1e2e;
-  --text: #e8e8f0;
-  --text-muted: #8a8a9a;
-  --accent: #f5c518;
-  --accent-hover: #e0b010;
-  --success: #22c55e;
-  --danger: #ef4444;
-  --border: #2a2a3a;
-  --input-bg: #1a1a25;
-  --input-border: #333344;
-  --shadow: 0 4px 12px rgba(0,0,0,0.4);
-}
-body.light {
-  --bg: #f5f5f7;
-  --bg-panel: #ffffff;
-  --bg-card: #ffffff;
-  --text: #1a1a2e;
-  --text-muted: #6a6a7a;
-  --border: #e0e0e8;
-  --input-bg: #f0f0f5;
-  --input-border: #d0d0d8;
-  --shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  padding: 16px;
-  padding-bottom: 80px;
-  transition: background 0.3s, color 0.3s;
-}
-header {
-  text-align: center;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: var(--bg-panel);
-  border-radius: 16px;
-  border: 1px solid var(--border);
-}
-header h1 {
-  font-size: 1.8rem;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-header p { color: var(--text-muted); font-size: 0.9rem; }
-.top-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.panel {
-  background: var(--bg-panel);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-}
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn-add { background: var(--accent); color: #000; }
-.btn-add:hover { background: var(--accent-hover); }
-.btn-edit { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
-.btn-edit:hover { background: var(--border); }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-success { background: var(--success); color: #fff; }
-.btn-api { background: #3b82f6; color: #fff; }
-.btn-export { background: #8b5cf6; color: #fff; }
-.btn-small { padding: 6px 10px; font-size: 0.8rem; }
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-.tab {
-  padding: 8px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
-.filters {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-input, select, textarea {
-  background: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 0.9rem;
-  width: 100%;
-  font-family: inherit;
-}
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-/* Cards com capa */
-.movies-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 14px;
-}
-.movie-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform 0.2s;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-.movie-card:hover { transform: translateY(-3px); }
-.movie-card.pinned {
-  border: 2px solid var(--accent);
-}
-.movie-card.pinned::before {
-  content: '📌 Fixado';
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: var(--accent);
-  color: #000;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  z-index: 10;
-}
-.movie-poster {
-  width: 100%;
-  aspect-ratio: 2/3;
-  background: var(--input-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  color: var(--text-muted);
-  overflow: hidden;
-}
-.movie-poster img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.movie-poster.no-poster {
-  background: linear-gradient(135deg, var(--input-bg), var(--border));
-}
-.movie-poster-placeholder {
-  position: absolute;
-  color: var(--text-muted);
-}
-.movie-body { padding: 12px; display: flex; flex-direction: column; flex: 1; }
-.movie-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
-.movie-meta { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 8px; }
-.movie-rating {
-  display: inline-block;
-  background: var(--accent);
-  color: #000;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  margin-right: 6px;
-  width: fit-content;
-}
-.movie-status { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 8px; }
-.movie-actions {
-  display: flex;
-  gap: 4px;
-  margin-top: auto;
-  flex-wrap: wrap;
-  padding-top: 8px;
-}
-.movie-actions .btn {
-  flex: 1;
-  padding: 6px 8px;
-  font-size: 0.75rem;
-  justify-content: center;
-}
-.movie-actions .btn.icon {
-  flex: 0 0 auto;
-  min-width: 32px;
-}
-.colecoes-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.colecao-tag {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.65rem;
-  color: var(--text-muted);
-}
-.colecao-tag.active { background: var(--accent); color: #000; border-color: var(--accent); }
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
-}
-.modal-overlay.active { display: flex; }
-.modal {
-  background: var(--bg-panel);
-  border-radius: 16px;
-  padding: 20px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-}
-.modal h2 { margin-bottom: 16px; color: var(--accent); }
-.form-group { margin-bottom: 12px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
-.api-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-.api-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.api-item:hover { border-color: var(--accent); transform: translateY(-2px); }
-.api-item img { width: 100%; border-radius: 6px; margin-bottom: 6px; }
-.api-item-title { font-size: 0.85rem; font-weight: 600; }
-.api-item-year { font-size: 0.75rem; color: var(--text-muted); }
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.stat-box {
-  background: var(--bg-card);
-  padding: 14px;
-  border-radius: 10px;
-  text-align: center;
-  border: 1px solid var(--border);
-}
-.stat-number { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
-.stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-.chart-container { max-width: 320px; margin: 16px auto; }
-.pizza-chart { display: flex; justify-content: center; }
-.chart-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); }
-.legend-item .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.months-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: flex-end; height: 140px; margin-top: 12px; }
-.month-bar { background: var(--accent); border-radius: 4px 4px 0 0; min-height: 4px; position: relative; transition: all 0.3s; }
-.month-bar:hover { opacity: 0.8; }
-.month-label { text-align: center; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; }
-.month-wrapper { display: flex; flex-direction: column; align-items: center; }
-.desafio-banner {
-  text-align: center;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--bg-panel), rgba(245,197,24,0.08));
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  margin-bottom: 16px;
-}
-.roleta-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  flex-direction: column;
-}
-.roleta-overlay.active { display: flex; }
-.roleta-container {
-  position: relative;
-  width: 300px;
-  height: 300px;
-}
-.roleta-wheel {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 4px solid var(--accent);
-  position: relative;
-  overflow: hidden;
-  transition: transform 4s cubic-bezier(0.17, 0.67, 0.21, 0.99);
-}
-.roleta-pointer {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 2rem;
-  z-index: 10;
-}
-.roleta-result {
-  color: var(--accent);
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-top: 24px;
-  text-align: center;
-  min-height: 60px;
-}
-.sugestoes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-.sugestao-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px;
-  text-align: center;
-}
-.sugestao-item img { width: 100%; border-radius: 6px; margin-bottom: 6px; }
-.sugestao-item-title { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; min-height: 32px; }
-@media (max-width: 600px) {
-  header h1 { font-size: 1.4rem; }
-  .movies-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .months-chart { height: 100px; }
-  .month-label { font-size: 0.55rem; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meus Filmes</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: #16213e;
+      padding: 30px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #e94560;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #e94560;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #c23a51;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: #0f3460;
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .delete-btn {
+      background: #ff6b6b;
+      padding: 6px 12px;
+      font-size: 14px;
+    }
+
+    .delete-btn:hover {
+      background: #ee5253;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 14px;
+      color: #aaa;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>🎬 Meus Filmes</h1>
 
-<header>
-  <h1>🎬 Meus Filmes</h1>
-  <p>Sua cinematográfica pessoal</p>
-  <div class="top-actions">
-    <button class="btn btn-add" onclick="abrirModal()">➕ Adicionar</button>
-    <button class="btn btn-api" onclick="abrirModalAPI()">🔍 Buscar TMDB</button>
-    <button class="btn btn-edit" onclick="abrirModalConfig()">⚙️ Config</button>
-    <button class="btn btn-edit" onclick="alternarTema()">🌓 Tema</button>
-    <button class="btn btn-export" onclick="exportarDados()">💾 Exportar</button>
-    <button class="btn btn-export" onclick="document.getElementById('importFile').click()">📥 Importar</button>
-    <button class="btn btn-add" onclick="iniciarRoleta()">🎲 Sortear</button>
-    <button class="btn btn-edit" onclick="compartilharColecao()">🔗 Compartilhar</button>
-    <input type="file" id="importFile" style="display:none" accept=".json" onchange="importarDados(event)">
+    <div class="input-group">
+      <input type="text" id="filmeInput" placeholder="Digite o nome do filme...">
+      <button onclick="adicionarFilme()">Adicionar</button>
+    </div>
+
+    <p class="status" id="status">Conectando...</p>
+
+    <ul id="listaFilmes"></ul>
   </div>
-</header>
 
-<!-- Desafio Semanal -->
-<div id="desafioBanner" class="desafio-banner" style="display:none;">
-  <div style="font-size:1.1rem;margin-bottom:8px;">
-    <span style="font-size:1.4rem;">🎯</span> <strong>Desafio da Semana:</strong>
-    <span id="desafioTexto" style="color:var(--accent);font-weight:700;"></span>
-  </div>
-  <button class="btn btn-add btn-small" onclick="sortearDesafio()">🎲 Novo Desafio</button>
-  <button class="btn btn-api btn-small" onclick="procurarDesafio()">🔍 Encontrar</button>
-</div>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      deleteDoc,
+      doc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-<!-- Filme do Dia -->
-<div id="filmeDia" class="desafio-banner" style="display:none;">
-  <div style="font-size:1.1rem;">
-    <span style="font-size:1.4rem;">🎬</span> <strong>Filme do Dia:</strong>
-    <span id="filmeDiaTexto" style="color:var(--accent);font-weight:700;"></span>
-  </div>
-</div>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwH8_re5BospsviqTr0QpXDNCps6kQRyg",
+      authDomain: "meus-filmes-c08ba.firebaseapp.com",
+      projectId: "meus-filmes-c08ba",
+      storageBucket: "meus-filmes-c08ba.firebasestorage.app",
+      messagingSenderId: "601793848988",
+      appId: "1:601793848988:web:91c47b152f947fdb44ef59",
+      measurementId: "G-7YZZYZGHQD"
+    };
 
-<div class="tabs">
-  <div class="tab active" data-aba="para_assistir" onclick="trocarAba('para_assistir')">🎯 Para Assistir</div>
-  <div class="tab" data-aba="todos" onclick="trocarAba('todos')">📋 Todos</div>
-  <div class="tab" data-aba="assistidos" onclick="trocarAba('assistidos')">✅ Assistidos</div>
-  <div class="tab" data-aba="favoritos" onclick="trocarAba('favoritos')">⭐ Favoritos</div>
-  <div class="tab" data-aba="colecoes" onclick="trocarAba('colecoes')">📁 Coleções</div>
-  <div class="tab" data-aba="estatisticas" onclick="trocarAba('estatisticas')">📊 Estatísticas</div>
-</div>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-<div class="panel" id="painelColecoes" style="display:none;">
-  <h3 style="margin-bottom:10px;">📁 Minhas Coleções</h3>
-  <div style="display:flex;gap:8px;margin-bottom:12px;">
-    <input type="text" id="novaColecao" placeholder="Nome da nova coleção...">
-    <button class="btn btn-add" onclick="criarColecao()">Criar</button>
-  </div>
-  <div id="listaColecoes"></div>
-</div>
+    const statusEl = document.getElementById("status");
+    const listaEl = document.getElementById("listaFilmes");
+    const inputEl = document.getElementById("filmeInput");
 
-<div class="panel">
-  <input type="text" id="busca" placeholder="🔍 Buscar filme..." oninput="renderizar()">
-</div>
-
-<div id="lista" class="movies-grid"></div>
-
-<!-- Modal Adicionar/Editar -->
-<div class="modal-overlay" id="modalFilme">
-  <div class="modal">
-    <h2 id="modalTitulo">Adicionar Filme</h2>
-    <div class="form-group">
-      <label>Buscar capa (URL)</label>
-      <input type="text" id="filmeCapa" placeholder="https://... (cole a URL da imagem)" oninput="previewCapa()">
-    </div>
-    <div id="capaPreview" style="text-align:center;margin-bottom:12px;"></div>
-    <div class="form-group">
-      <label>Título *</label>
-      <input type="text" id="filmeTitulo" placeholder="Ex: Interestelar">
-    </div>
-    <div class="form-group">
-      <label>Ano</label>
-      <input type="number" id="filmeAno" placeholder="2024">
-    </div>
-    <div class="form-group">
-      <label>Gênero</label>
-      <input type="text" id="filmeGenero" placeholder="Ficção, Drama, Ação...">
-    </div>
-    <div class="form-group">
-      <label>Nota (0-10)</label>
-      <input type="number" id="filmeNota" min="0" max="10" step="0.1" placeholder="8.5">
-    </div>
-    <div class="form-group">
-      <label>Status</label>
-      <select id="filmeStatus">
-        <option value="para_assistir">Para Assistir</option>
-        <option value="assistido">Assistido</option>
-        <option value="favorito">Favorito</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Data em que assistiu</label>
-      <input type="date" id="filmeData">
-    </div>
-    <div class="form-group">
-      <label>Comentários</label>
-      <textarea id="filmeComentario" rows="3" placeholder="O que achou?"></textarea>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-      <button class="btn btn-edit" onclick="fecharModal()">Cancelar</button>
-      <button class="btn btn-add" onclick="salvarFilme()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal API TMDB -->
-<div class="modal-overlay" id="modalAPI">
-  <div class="modal">
-    <h2>🔍 Buscar no TMDB</h2>
-    <div class="form-group">
-      <input type="text" id="apiSearch" placeholder="Nome do filme..." oninput="debounceBuscar()">
-    </div>
-    <div id="apiResults" class="api-results"></div>
-    <div style="text-align:right;margin-top:12px;">
-      <button class="btn btn-edit" onclick="fecharModalAPI()">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Config -->
-<div class="modal-overlay" id="modalConfig">
-  <div class="modal">
-    <h2>⚙️ Configurações</h2>
-    <div class="form-group">
-      <label>Chave da API TMDB (opcional)</label>
-      <input type="text" id="configTmdbKey" placeholder="Cole sua chave aqui...">
-      <small style="color:var(--text-muted);font-size:0.75rem;">Pegue grátis em: themoviedb.org/settings/api</small>
-    </div>
-    <div class="form-group">
-      <label>País preferido (sugestões)</label>
-      <select id="configPais">
-        <option value="BR">Brasil</option>
-        <option value="US">Estados Unidos</option>
-        <option value="GB">Reino Unido</option>
-        <option value="FR">França</option>
-        <option value="JP">Japão</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-      <button class="btn btn-edit" onclick="fecharModalConfig()">Cancelar</button>
-      <button class="btn btn-add" onclick="salvarConfig()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Sugestões -->
-<div class="modal-overlay" id="modalSugestoes">
-  <div class="modal">
-    <h2>💡 Sugestões baseadas nos seus favoritos</h2>
-    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">Filmes parecidos com os que você mais gostou:</p>
-    <div id="sugestoesConteudo" class="sugestoes-grid"></div>
-    <div style="text-align:right;margin-top:12px;">
-      <button class="btn btn-edit" onclick="fecharModalSugestoes()">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Roleta -->
-<div class="roleta-overlay" id="roletaOverlay">
-  <div class="roleta-container">
-    <div class="roleta-pointer">▼</div>
-    <div class="roleta-wheel" id="roletaWheel"></div>
-  </div>
-  <div class="roleta-result" id="roletaResult"></div>
-  <div style="margin-top:20px;display:flex;gap:8px;">
-    <button class="btn btn-success" id="btnMarcarAssistido" style="display:none;" onclick="marcarAssistidoRoleta()">✅ Marcar como Assistido</button>
-    <button class="btn btn-edit" onclick="fecharRoleta()">Fechar</button>
-  </div>
-</div>
-
-<script>
-// ===== ESTADO =====
-let filmes = JSON.parse(localStorage.getItem('filmes') || '[]');
-let colecoes = JSON.parse(localStorage.getItem('colecoes') || '[]');
-let config = JSON.parse(localStorage.getItem('config') || '{"tema":"dark","tmdbKey":"","pais":"BR"}');
-let abaAtual = 'para_assistir'; // PADRÃO = PARA ASSISTIR
-let filmeEditando = null;
-let filmeRoleta = null;
-let debounceTimer = null;
-
-// ===== PERSISTÊNCIA =====
-function salvar() {
-  localStorage.setItem('filmes', JSON.stringify(filmes));
-  localStorage.setItem('colecoes', JSON.stringify(colecoes));
-  localStorage.setItem('config', JSON.stringify(config));
-}
-
-// ===== TEMA =====
-function aplicarTema(tema) {
-  document.body.classList.toggle('light', tema === 'light');
-  config.tema = tema;
-  salvar();
-}
-function alternarTema() {
-  aplicarTema(config.tema === 'dark' ? 'light' : 'dark');
-}
-
-// ===== ABAS =====
-function trocarAba(aba) {
-  abaAtual = aba;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.aba === aba));
-  document.getElementById('painelColecoes').style.display = aba === 'colecoes' ? 'block' : 'none';
-  if (aba === 'estatisticas') renderizarEstatisticas();
-  else if (aba === 'colecoes') renderizarColecoes();
-  else renderizar();
-}
-
-// ===== FILMES =====
-function abrirModal(filme = null) {
-  filmeEditando = filme;
-  document.getElementById('modalTitulo').textContent = filme ? 'Editar Filme' : 'Adicionar Filme';
-  document.getElementById('filmeCapa').value = filme?.capa || '';
-  document.getElementById('filmeTitulo').value = filme?.titulo || '';
-  document.getElementById('filmeAno').value = filme?.ano || '';
-  document.getElementById('filmeGenero').value = filme?.genero || '';
-  document.getElementById('filmeNota').value = filme?.nota || '';
-  document.getElementById('filmeStatus').value = filme?.status || 'para_assistir';
-  document.getElementById('filmeData').value = filme?.data || '';
-  document.getElementById('filmeComentario').value = filme?.comentario || '';
-  previewCapa();
-  document.getElementById('modalFilme').classList.add('active');
-}
-function fecharModal() { document.getElementById('modalFilme').classList.remove('active'); }
-
-function previewCapa() {
-  const url = document.getElementById('filmeCapa').value.trim();
-  const p = document.getElementById('capaPreview');
-  if (url) {
-    p.innerHTML = `<img src="${url}" style="max-height:160px;border-radius:8px;border:1px solid var(--border);">`;
-  } else {
-    p.innerHTML = '';
-  }
-}
-
-function salvarFilme() {
-  const titulo = document.getElementById('filmeTitulo').value.trim();
-  if (!titulo) return alert('Informe o título!');
-  const dados = {
-    id: filmeEditando?.id || Date.now(),
-    titulo,
-    capa: document.getElementById('filmeCapa').value.trim(),
-    ano: document.getElementById('filmeAno').value,
-    genero: document.getElementById('filmeGenero').value,
-    nota: parseFloat(document.getElementById('filmeNota').value) || 0,
-    status: document.getElementById('filmeStatus').value,
-    data: document.getElementById('filmeData').value,
-    comentario: document.getElementById('filmeComentario').value,
-    fixado: filmeEditando?.fixado || false,
-    colecoes: filmeEditando?.colecoes || []
-  };
-  if (filmeEditando) {
-    filmes = filmes.map(f => f.id === filmeEditando.id ? dados : f);
-  } else {
-    filmes.push(dados);
-  }
-  salvar();
-  fecharModal();
-  renderizar();
-}
-
-function editarFilme(id) {
-  const f = filmes.find(x => x.id === id);
-  if (f) abrirModal(f);
-}
-
-function excluirFilme(id) {
-  if (!confirm('Excluir este filme?')) return;
-  filmes = filmes.filter(f => f.id !== id);
-  salvar();
-  renderizar();
-}
-
-function toggleFixar(id) {
-  const f = filmes.find(x => x.id === id);
-  if (f) { f.fixado = !f.fixado; salvar(); renderizar(); }
-}
-
-function mudarStatus(id, status) {
-  const f = filmes.find(x => x.id === id);
-  if (f) { f.status = status; salvar(); renderizar(); }
-}
-
-function toggleColecaoFilme(filmeId, colecaoId) {
-  const f = filmes.find(x => x.id === filmeId);
-  if (!f) return;
-  if (!f.colecoes) f.colecoes = [];
-  const idx = f.colecoes.indexOf(colecaoId);
-  if (idx >= 0) f.colecoes.splice(idx, 1);
-  else f.colecoes.push(colecaoId);
-  salvar();
-  renderizar();
-}
-
-// ===== RENDERIZAÇÃO =====
-function posterHTML(f) {
-  if (f.capa) {
-    return `<div class="movie-poster"><img src="${f.capa}" onerror="this.parentElement.classList.add('no-poster');this.remove();"><div class="movie-poster-placeholder" style="display:none;">🎬</div></div>`;
-  }
-  return `<div class="movie-poster no-poster">🎬</div>`;
-}
-
-function renderizar() {
-  const busca = document.getElementById('busca').value.toLowerCase();
-  let lista = filmes.filter(f => {
-    if (abaAtual !== 'todos' && abaAtual !== 'colecoes') {
-      if (abaAtual === 'assistidos' && f.status !== 'assistido') return false;
-      if (abaAtual === 'para_assistir' && f.status !== 'para_assistir') return false;
-      if (abaAtual === 'favoritos' && f.status !== 'favorito') return false;
-    }
-    if (busca && !f.titulo.toLowerCase().includes(busca)) return false;
-    return true;
-  });
-  
-  lista.sort((a, b) => (b.fixado ? 1 : 0) - (a.fixado ? 1 : 0));
-  
-  const container = document.getElementById('lista');
-  if (lista.length === 0) {
-    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Nenhum filme aqui</div>';
-    return;
-  }
-  
-  container.innerHTML = lista.map(f => `
-    <div class="movie-card ${f.fixado ? 'pinned' : ''}">
-      ${posterHTML(f)}
-      <div class="movie-body">
-        <div class="movie-title">${f.titulo}</div>
-        <div class="movie-meta">
-          ${f.ano ? f.ano + ' • ' : ''}${f.genero || 'Sem gênero'}
-        </div>
-        ${f.nota ? `<span class="movie-rating">⭐ ${f.nota}</span>` : ''}
-        <span class="movie-status">${statusLabel(f.status)}</span>
-        ${f.colecoes && f.colecoes.length ? `<div class="colecoes-list">${f.colecoes.map(cId => {
-          const c = colecoes.find(x => x.id === cId);
-          return c ? `<span class="colecao-tag">${c.nome}</span>` : '';
-        }).join('')}</div>` : ''}
-        <div class="movie-actions">
-          <button class="btn btn-edit icon" onclick="toggleFixar(${f.id})" title="Fixar">${f.fixado ? '📍' : '📌'}</button>
-          <button class="btn btn-edit" onclick="editarFilme(${f.id})">✏️</button>
-          <button class="btn btn-edit" onclick="mudarStatus(${f.id}, '${f.status === 'assistido' || f.status === 'favorito' ? 'para_assistir' : 'assistido'}')">✅</button>
-          <button class="btn btn-danger icon" onclick="excluirFilme(${f.id})">🗑️</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function statusLabel(s) {
-  return { para_assistir: '🎯 Para Assistir', assistido: '✅ Assistido', favorito: '⭐ Favorito' }[s] || s;
-}
-
-// ===== COLEÇÕES =====
-function criarColecao() {
-  const nome = document.getElementById('novaColecao').value.trim();
-  if (!nome) return;
-  colecoes.push({ id: Date.now(), nome });
-  document.getElementById('novaColecao').value = '';
-  salvar();
-  renderizarColecoes();
-}
-
-function excluirColecao(id) {
-  if (!confirm('Excluir coleção?')) return;
-  colecoes = colecoes.filter(c => c.id !== id);
-  filmes.forEach(f => { if (f.colecoes) f.colecoes = f.colecoes.filter(c => c !== id); });
-  salvar();
-  renderizarColecoes();
-}
-
-function renderizarColecoes() {
-  const container = document.getElementById('listaColecoes');
-  if (colecoes.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-muted);">Nenhuma coleção criada ainda.</p>';
-    return;
-  }
-  container.innerHTML = colecoes.map(c => {
-    const count = filmes.filter(f => f.colecoes && f.colecoes.includes(c.id)).length;
-    return `<div class="colecao-tag active" style="padding:8px 14px;font-size:0.9rem;">
-      ${c.nome} (${count})
-      <button class="btn btn-danger btn-small" style="margin-left:8px;padding:2px 8px;" onclick="excluirColecao(${c.id})">×</button>
-    </div>`;
-  }).join('');
-}
-
-// ===== ESTATÍSTICAS =====
-function renderizarEstatisticas() {
-  const total = filmes.length;
-  const assistidos = filmes.filter(f => f.status === 'assistido' || f.status === 'favorito').length;
-  const paraAssistir = filmes.filter(f => f.status === 'para_assistir').length;
-  const favoritos = filmes.filter(f => f.status === 'favorito').length;
-  const comNota = filmes.filter(f => f.nota > 0);
-  const mediaNota = comNota.length > 0 ? comNota.reduce((s, f) => s + f.nota, 0) / comNota.length : 0;
-  
-  const porMes = Array(12).fill(0);
-  filmes.forEach(f => {
-    if (f.data) {
-      const m = new Date(f.data).getMonth();
-      if (!isNaN(m)) porMes[m]++;
-    }
-  });
-  
-  const porGenero = {};
-  filmes.forEach(f => {
-    if (f.genero) {
-      f.genero.split(',').map(g => g.trim()).filter(Boolean).forEach(g => {
-        porGenero[g] = (porGenero[g] || 0) + 1;
+    // Login anônimo
+    signInAnonymously(auth)
+      .then(() => {
+        statusEl.textContent = "Conectado! Pronto para salvar filmes.";
+      })
+      .catch((erro) => {
+        statusEl.textContent = "Erro ao conectar: " + erro.message;
       });
-    }
-  });
-  
-  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const maxMes = Math.max(...porMes, 1);
-  
-  document.getElementById('lista').innerHTML = `
-    <div style="grid-column:1/-1;">
-      <div class="stats-grid">
-        <div class="stat-box"><div class="stat-number">${total}</div><div class="stat-label">Total</div></div>
-        <div class="stat-box"><div class="stat-number">${assistidos}</div><div class="stat-label">Assistidos</div></div>
-        <div class="stat-box"><div class="stat-number">${paraAssistir}</div><div class="stat-label">Para Assistir</div></div>
-        <div class="stat-box"><div class="stat-number">${favoritos}</div><div class="stat-label">Favoritos</div></div>
-        <div class="stat-box"><div class="stat-number">${mediaNota.toFixed(1)}</div><div class="stat-label">Média</div></div>
-      </div>
-      
-      <div class="panel">
-        <h3 style="margin-bottom:12px;">📅 Filmes por Mês</h3>
-        <div class="months-chart">
-          ${porMes.map((v, i) => `
-            <div class="month-wrapper">
-              <div class="month-bar" style="height:${(v/maxMes)*100}%" title="${v} filmes"></div>
-              <div class="month-label">${meses[i]}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      
-      <div class="panel">
-        <h3 style="margin-bottom:12px;">🎭 Distribuição por Gênero</h3>
-        <div class="chart-container">
-          ${Object.keys(porGenero).length ? renderPizza(porGenero) : '<p style="text-align:center;color:var(--text-muted);">Sem dados de gênero</p>'}
-        </div>
-      </div>
-      
-      <div style="text-align:center;margin-top:16px;">
-        <button class="btn btn-api" onclick="abrirSugestoes()">💡 Sugestões baseadas nos favoritos</button>
-      </div>
-    </div>
-  `;
-}
 
-function renderPizza(dados) {
-  const entries = Object.entries(dados).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return '';
-  const cores = ['#f5c518', '#22c55e', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-  let acumulado = 0;
-  let svg = '<svg viewBox="0 0 200 200" width="220" height="220" style="transform:rotate(-90deg)">';
-  const raio = 80, cx = 100, cy = 100;
-  entries.forEach(([, valor], i) => {
-    const pct = valor / total;
-    const a1 = acumulado * 2 * Math.PI;
-    const a2 = (acumulado + pct) * 2 * Math.PI;
-    const x1 = cx + raio * Math.cos(a1);
-    const y1 = cy + raio * Math.sin(a1);
-    const x2 = cx + raio * Math.cos(a2);
-    const y2 = cy + raio * Math.sin(a2);
-    const grande = pct > 0.5 ? 1 : 0;
-    svg += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${raio} ${raio} 0 ${grande} 1 ${x2} ${y2} Z" fill="${cores[i]}" stroke="${document.body.classList.contains('light') ? '#fff' : '#0a0a0f'}" stroke-width="2"/>`;
-    acumulado += pct;
-  });
-  svg += '</svg>';
-  const legenda = entries.map(([label, valor], i) => `
-    <div class="legend-item"><span class="dot" style="background:${cores[i]}"></span>${label} (${valor})</div>
-  `).join('');
-  return `<div class="pizza-chart">${svg}</div><div class="chart-legend">${legenda}</div>`;
-}
+    // Escuta mudanças no Firestore em tempo real
+    onSnapshot(collection(db, "filmes"), (snapshot) => {
+      listaEl.innerHTML = "";
+      snapshot.forEach((docItem) => {
+        const filme = docItem.data();
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${filme.nome}</span>
+          <button class="delete-btn" onclick="excluirFilme('${docItem.id}')">Excluir</button>
+        `;
+        listaEl.appendChild(li);
+      });
+    });
 
-// ===== API TMDB =====
-function abrirModalAPI() {
-  if (!config.tmdbKey) {
-    alert('Configure sua chave TMDB em ⚙️ Config primeiro!');
-    abrirModalConfig();
-    return;
-  }
-  document.getElementById('modalAPI').classList.add('active');
-  document.getElementById('apiSearch').value = '';
-  document.getElementById('apiResults').innerHTML = '';
-  document.getElementById('apiSearch').focus();
-}
-function fecharModalAPI() { document.getElementById('modalAPI').classList.remove('active'); }
+    // Adicionar filme
+    window.adicionarFilme = async function () {
+      const nome = inputEl.value.trim();
+      if (!nome) return;
 
-function debounceBuscar() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(buscarAPI, 400);
-}
-
-async function buscarAPI() {
-  const q = document.getElementById('apiSearch').value.trim();
-  if (q.length < 2) return;
-  const res = document.getElementById('apiResults');
-  res.innerHTML = '<p style="color:var(--text-muted);">Buscando...</p>';
-  try {
-    const r = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${config.tmdbKey}&language=pt-BR&query=${encodeURIComponent(q)}`);
-    const data = await r.json();
-    if (!data.results || data.results.length === 0) {
-      res.innerHTML = '<p style="color:var(--text-muted);">Nenhum resultado</p>';
-      return;
-    }
-    res.innerHTML = data.results.slice(0, 12).map(m => `
-      <div class="api-item" onclick='adicionarDoTMDB(${JSON.stringify(m).replace(/'/g, "&apos;")})'>
-        <img src="${m.poster_path ? 'https://image.tmdb.org/t/p/w200' + m.poster_path : ''}" alt="">
-        <div class="api-item-title">${m.title}</div>
-        <div class="api-item-year">${m.release_date ? m.release_date.split('-')[0] : '?'}</div>
-      </div>
-    `).join('');
-  } catch (e) {
-    res.innerHTML = '<p style="color:var(--danger);">Erro na busca</p>';
-  }
-}
-
-function adicionarDoTMDB(m) {
-  filmes.push({
-    id: Date.now(),
-    titulo: m.title,
-    capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
-    ano: m.release_date ? m.release_date.split('-')[0] : '',
-    genero: '',
-    nota: 0,
-    status: 'para_assistir',
-    data: '',
-    comentario: '',
-    fixado: false,
-    colecoes: []
-  });
-  salvar();
-  fecharModalAPI();
-  renderizar();
-}
-
-// ===== SUGESTÕES =====
-async function abrirSugestoes() {
-  if (!config.tmdbKey) { alert('Configure a chave TMDB!'); return; }
-  const bemAvaliados = filmes.filter(f => f.nota >= 8 && f.genero);
-  if (bemAvaliados.length === 0) {
-    alert('Avalie alguns filmes com nota >= 8 e informe o gênero para receber sugestões!');
-    return;
-  }
-  const generos = {};
-  bemAvaliados.forEach(f => f.genero.split(',').map(g => g.trim()).forEach(g => generos[g] = (generos[g] || 0) + 1));
-  const topGenero = Object.entries(generos).sort((a, b) => b[1] - a[1])[0][0];
-  
-  const mapaGenero = {
-    'ação': 28, 'acao': 28, 'comédia': 35, 'comedia': 35, 'drama': 18, 'terror': 27,
-    'ficção': 878, 'romance': 10749, 'animação': 16, 'documentário': 99, 'aventura': 12,
-    'suspense': 53, 'thriller': 53, 'fantasia': 14, 'guerra': 10752, 'crime': 80
-  };
-  const generoId = mapaGenero[topGenero.toLowerCase()] || 28;
-  
-  document.getElementById('sugestoesConteudo').innerHTML = '<p style="color:var(--text-muted);">Carregando sugestões...</p>';
-  document.getElementById('modalSugestoes').classList.add('active');
-  
-  try {
-    const r = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${config.tmdbKey}&language=pt-BR&with_genres=${generoId}&sort_by=popularity.desc`);
-    const data = await r.json();
-    const existentes = new Set(filmes.map(f => f.titulo.toLowerCase()));
-    const sugestoes = data.results.filter(m => !existentes.has(m.title.toLowerCase())).slice(0, 12);
-    
-    document.getElementById('sugestoesConteudo').innerHTML = sugestoes.map(m => `
-      <div class="sugestao-item">
-        <img src="${m.poster_path ? 'https://image.tmdb.org/t/p/w200' + m.poster_path : ''}" alt="">
-        <div class="sugestao-item-title">${m.title}</div>
-        <button class="btn btn-add btn-small" style="width:100%;" onclick='adicionarSugestao(${JSON.stringify(m).replace(/'/g, "&apos;")})'>➕ Adicionar</button>
-      </div>
-    `).join('');
-  } catch (e) {
-    document.getElementById('sugestoesConteudo').innerHTML = '<p style="color:var(--danger);">Erro ao carregar</p>';
-  }
-}
-
-function adicionarSugestao(m) {
-  filmes.push({
-    id: Date.now() + Math.random(),
-    titulo: m.title,
-    capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
-    ano: m.release_date ? m.release_date.split('-')[0] : '',
-    genero: '',
-    nota: 0,
-    status: 'para_assistir',
-    data: '',
-    comentario: '',
-    fixado: false,
-    colecoes: []
-  });
-  salvar();
-  renderizar();
-}
-
-function fecharModalSugestoes() { document.getElementById('modalSugestoes').classList.remove('active'); }
-
-// ===== ROLETA =====
-function iniciarRoleta() {
-  const elegiveis = filmes.filter(f => f.status === 'para_assistir');
-  if (elegiveis.length === 0) { alert('Adicione filmes "Para Assistir" primeiro!'); return; }
-  
-  const wheel = document.getElementById('roletaWheel');
-  const n = Math.min(elegiveis.length, 8);
-  const escolhidos = [];
-  const pool = [...elegiveis];
-  for (let i = 0; i < n; i++) {
-    const idx = Math.floor(Math.random() * pool.length);
-    escolhidos.push(pool.splice(idx, 1)[0]);
-  }
-  
-  const cores = ['#f5c518', '#22c55e', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-  let html = '';
-  escolhidos.forEach((f, i) => {
-    html += `<div style="position:absolute;top:50%;left:50%;transform-origin:0 0;width:50%;height:2px;background:${cores[i]};transform:rotate(${i * 360 / n}deg);">
-      <div style="position:absolute;right:10px;top:-12px;background:${cores[i]};color:#000;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;">${f.titulo}</div>
-    </div>`;
-  });
-  wheel.innerHTML = html;
-  wheel.style.transform = 'rotate(0deg)';
-  
-  document.getElementById('roletaOverlay').classList.add('active');
-  document.getElementById('roletaResult').textContent = 'Sorteando...';
-  document.getElementById('btnMarcarAssistido').style.display = 'none';
-  
-  const vencedor = escolhidos[Math.floor(Math.random() * escolhidos.length)];
-  filmeRoleta = vencedor;
-  const anguloFinal = 360 * 5 + (360 - escolhidos.indexOf(vencedor) * (360 / n));
-  
-  setTimeout(() => {
-    wheel.style.transform = `rotate(${anguloFinal}deg)`;
-  }, 100);
-  
-  setTimeout(() => {
-    document.getElementById('roletaResult').innerHTML = `🎉 <strong>${vencedor.titulo}</strong>${vencedor.ano ? ' (' + vencedor.ano + ')' : ''}`;
-    document.getElementById('btnMarcarAssistido').style.display = 'inline-flex';
-  }, 4200);
-}
-
-function marcarAssistidoRoleta() {
-  if (filmeRoleta) {
-    const f = filmes.find(x => x.id === filmeRoleta.id);
-    if (f) { f.status = 'assistido'; f.data = new Date().toISOString().split('T')[0]; salvar(); renderizar(); }
-  }
-  fecharRoleta();
-}
-
-function fecharRoleta() {
-  document.getElementById('roletaOverlay').classList.remove('active');
-  filmeRoleta = null;
-}
-
-// ===== DESAFIO SEMANAL =====
-const DESAFIOS = [
-  'Assista um filme de animação',
-  'Assista um filme dos anos 80',
-  'Assista uma comédia que você nunca viu',
-  'Assista um filme de suspense',
-  'Assista um filme mais antigo que você',
-  'Assista um filme com título de uma palavra',
-  'Assista um filme de guerra ou histórico',
-  'Assista um filme com nota acima de 8 no TMDB',
-  'Assista um filme de outro país',
-  'Assista um filme de fantasia ou ficção científica',
-  'Assista um filme premiado no Oscar',
-  'Assista um filme com mais de 2 horas',
-  'Assista um filme em preto e branco',
-  'Assista um filme baseado em livro'
-];
-
-function sortearDesafio() {
-  const d = DESAFIOS[Math.floor(Math.random() * DESAFIOS.length)];
-  localStorage.setItem('desafio', JSON.stringify({ texto: d, data: new Date().toDateString() }));
-  document.getElementById('desafioTexto').textContent = d;
-  document.getElementById('desafioBanner').style.display = 'block';
-}
-
-function carregarDesafio() {
-  const s = JSON.parse(localStorage.getItem('desafio') || 'null');
-  if (s && s.data === new Date().toDateString()) {
-    document.getElementById('desafioTexto').textContent = s.texto;
-    document.getElementById('desafioBanner').style.display = 'block';
-  } else {
-    sortearDesafio();
-  }
-}
-
-function procurarDesafio() {
-  const texto = document.getElementById('desafioTexto').textContent;
-  document.getElementById('apiSearch').value = texto.replace('Assista ', '').replace('um filme ', '');
-  abrirModalAPI();
-  setTimeout(buscarAPI, 100);
-}
-
-// ===== FILME DO DIA =====
-async function carregarFilmeDia() {
-  if (!config.tmdbKey) return;
-  try {
-    const dia = new Date().getDate();
-    const r = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${config.tmdbKey}&language=pt-BR&page=${(dia % 20) + 1}`);
-    const data = await r.json();
-    if (data.results && data.results.length > 0) {
-      const f = data.results[dia % data.results.length];
-      document.getElementById('filmeDiaTexto').textContent = `${f.title} (${f.release_date ? f.release_date.split('-')[0] : '?'})`;
-      document.getElementById('filmeDia').style.display = 'block';
-    }
-  } catch (e) { console.log('Erro filme do dia:', e); }
-}
-
-// ===== COMPARTILHAR =====
-function compartilharColecao() {
-  const dados = { dono: 'Minha Coleção', data: new Date().toISOString(), filmes, colecoes };
-  const texto = btoa(unescape(encodeURIComponent(JSON.stringify(dados))));
-  const url = window.location.href.split('?')[0] + '?dados=' + texto;
-  if (navigator.share) {
-    navigator.share({ title: 'Minha coleção de filmes', text: 'Veja minha coleção!', url }).catch(() => {});
-  } else {
-    navigator.clipboard.writeText(url).then(() => alert('🔗 Link copiado! Envie para um amigo.'));
-  }
-}
-
-function carregarCompartilhado() {
-  const params = new URLSearchParams(window.location.search);
-  const dados = params.get('dados');
-  if (!dados) return false;
-  try {
-    const d = JSON.parse(decodeURIComponent(escape(atob(dados))));
-    if (d.filmes && Array.isArray(d.filmes)) {
-      if (confirm(`📥 Ver coleção compartilhada com ${d.filmes.length} filmes?\n\n(OK = substituir sua coleção atual, Cancelar = manter a sua)`)) {
-        filmes = d.filmes;
-        colecoes = d.colecoes || [];
-        salvar();
-        renderizar();
+      try {
+        await addDoc(collection(db, "filmes"), {
+          nome: nome,
+          criadoEm: serverTimestamp()
+        });
+        inputEl.value = "";
+      } catch (erro) {
+        alert("Erro ao salvar: " + erro.message);
       }
-      return true;
-    }
-  } catch (e) { console.log('Link inválido'); }
-  return false;
-}
+    };
 
-// ===== EXPORTAR/IMPORTAR =====
-function exportarDados() {
-  const blob = new Blob([JSON.stringify({ filmes, colecoes, config }, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'meus-filmes-' + new Date().toISOString().split('T')[0] + '.json';
-  a.click();
-}
+    // Excluir filme
+    window.excluirFilme = async function (id) {
+      try {
+        await deleteDoc(doc(db, "filmes", id));
+      } catch (erro) {
+        alert("Erro ao excluir: " + erro.message);
+      }
+    };
 
-function importarDados(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const d = JSON.parse(ev.target.result);
-      if (d.filmes) filmes = d.filmes;
-      if (d.colecoes) colecoes = d.colecoes;
-      if (d.config) config = { ...config, ...d.config };
-      salvar();
-      aplicarTema(config.tema);
-      renderizar();
-      alert('✅ Importado com sucesso!');
-    } catch (err) { alert('Arquivo inválido'); }
-  };
-  reader.readAsText(file);
-}
-
-// ===== CONFIG =====
-function abrirModalConfig() {
-  document.getElementById('configTmdbKey').value = config.tmdbKey || '';
-  document.getElementById('configPais').value = config.pais || 'BR';
-  document.getElementById('modalConfig').classList.add('active');
-}
-function fecharModalConfig() { document.getElementById('modalConfig').classList.remove('active'); }
-function salvarConfig() {
-  config.tmdbKey = document.getElementById('configTmdbKey').value.trim();
-  config.pais = document.getElementById('configPais').value;
-  salvar();
-  fecharModalConfig();
-  carregarFilmeDia();
-}
-
-// ===== PWA SERVICE WORKER =====
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    const swCode = `
-      const CACHE = 'meus-filmes-v1';
-      self.addEventListener('install', e => { self.skipWaiting(); });
-      self.addEventListener('activate', e => { self.clients.claim(); });
-      self.addEventListener('fetch', e => {
-        if (e.request.method !== 'GET') return;
-        e.respondWith(
-          caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-            const copy = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, copy));
-            return res;
-          }).catch(() => caches.match(e.request)))
-        );
-      });
-    `;
-    const blob = new Blob([swCode], { type: 'text/javascript' });
-    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-  });
-}
-
-// ===== INICIALIZAÇÃO =====
-aplicarTema(config.tema || 'dark');
-carregarCompartilhado();
-trocarAba('para_assistir'); // FORÇA PARA ASSISTIR COMO ABA INICIAL
-renderizar();
-carregarDesafio();
-carregarFilmeDia();
-</script>
-
+    // Adicionar com Enter
+    inputEl.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") adicionarFilme();
+    });
+  </script>
 </body>
 </html>
-
