@@ -6,6 +6,7 @@
 <title>Meus Filmes</title>
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTWV1cyBGaWxtZXMiLCJzaG9ydF9uYW1lIjoiRmlsbWVzIiwiZGVzY3JpcHRpb24iOiJTdWEgY29sZcOnw6NvIGNpbmVtYXRvZ3LDoWZpY2EgcGVzc29hbCIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTBhMGYiLCJ0aGVtZV9jb2xvciI6IiNmNWM1MTgiLCJzdGFydF91cmwiOiIuIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInPjxyZWN0IHdpZHRoPScxOTInIGhlaWdodD0nMTkyJyBmaWxsPSclMjMwYTBhMGYnLz48dGV4dCB4PSc5NicgeT0nMTMwJyBmb250LXNpemU9JzEwMCcgdGV4dC1hbmNob3I9J21pZGRsZScgZmlsbD0nJTIzZjVjNTE4Jz5GPC90ZXh0Pjwvc3ZnPiIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
 <meta name="theme-color" content="#f5c518">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -404,16 +405,11 @@ input:focus, select:focus, textarea:focus {
 }
 .sync-status.online { display: block; border-color: var(--success); color: var(--success); }
 .sync-status.offline { display: block; border-color: var(--danger); color: var(--danger); }
+.sync-status.syncing { display: block; border-color: var(--accent); color: var(--accent); }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 @media (max-width: 600px) {
@@ -436,7 +432,8 @@ input:focus, select:focus, textarea:focus {
       <img class="user-photo" id="userPhoto" src="" alt="">
       <span class="user-name" id="userName"></span>
       <button class="btn btn-logout btn-small" onclick="logout()"> Sair</button>
-      <span class="sync-status online" id="syncStatus">☁️ Sincronizado</span>
+      <button class="btn btn-sync btn-small" onclick="forcarSincronizacao()" title="Sincronizar agora">🔄 Sync</button>
+      <span class="sync-status" id="syncStatus"></span>
     </div>
   </div>
   
@@ -622,7 +619,14 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let dbUser = null;
 let unsubFilmes = null;
 let unsubColecoes = null;
-let ignorarSyncLocal = false;
+
+// ===== CONTROLE DE SINCRONIZAÇÃO OTIMIZADA =====
+let ignorarSyncLocal = false;     // evita loop: nuvem -> local -> nuvem
+let pendentesFilmes = new Set();  // IDs de filmes com mudanças pendentes
+let pendentesColecoes = new Set(); // IDs de coleções com mudanças pendentes
+let syncTimer = null;             // timer para agrupar gravações (debounce)
+let syncOngoing = false;          // evita chamadas concorrentes
+let primeiraCarga = true;         // flag para primeira leitura da nuvem
 
 // ===== ESTADO =====
 let filmes = JSON.parse(localStorage.getItem('filmes') || '[]');
@@ -634,12 +638,128 @@ let filmeRoleta = null;
 let debounceTimer = null;
 let idCounter = Date.now();
 
-// ===== PERSISTÊNCIA =====
-function salvar() {
+// ===== PERSISTÊNCIA LOCAL =====
+function salvarLocal() {
   localStorage.setItem('filmes', JSON.stringify(filmes));
   localStorage.setItem('colecoes', JSON.stringify(colecoes));
   localStorage.setItem('config', JSON.stringify(config));
-  if (dbUser) salvarTudoNaNuvem();
+}
+
+// ===== SINCRONIZAÇÃO OTIMIZADA (SÓ O QUE MUDOU) =====
+function marcarMudancaFilme(id) {
+  if (!dbUser) return;
+  pendentesFilmes.add(id);
+  agendarSync();
+}
+
+function marcarMudancaColecao(id) {
+  if (!dbUser) return;
+  pendentesColecoes.add(id);
+  agendarSync();
+}
+
+function agendarSync() {
+  if (syncTimer) clearTimeout(syncTimer);
+  // Agrupa mudanças por 1.5 segundos
+  syncTimer = setTimeout(executarSync, 1500);
+}
+
+async function executarSync() {
+  if (!dbUser || syncOngoing) return;
+  syncOngoing = true;
+  mostrarStatusSync('syncing', '🔄 Sincronizando...');
+
+  try {
+    const userRef = db.collection('users').doc(dbUser.uid);
+    const filmesRef = userRef.collection('filmes');
+    const colecoesRef = userRef.collection('colecoes');
+
+    // === FILMES ===
+    if (pendentesFilmes.size > 0) {
+      ignorarSyncLocal = true;
+      const promises = [];
+
+      // Para cada filme pendente: verifica se existe na nuvem
+      for (const id of pendentesFilmes) {
+        const filmeLocal = filmes.find(f => f.id === id);
+        const docRef = filmesRef.doc(String(id));
+
+        if (filmeLocal) {
+          // Atualiza ou cria
+          const { id: _, ...dados } = filmeLocal;
+          promises.push(docRef.set(dados));
+        } else {
+          // Foi deletado localmente -> apaga na nuvem
+          promises.push(docRef.delete().catch(e => {
+            // 404 = já não existia, tudo bem
+            if (e.code !== 'not-found') console.warn('Erro ao apagar filme', e);
+          }));
+        }
+      }
+
+      await Promise.all(promises);
+      pendentesFilmes.clear();
+      ignorarSyncLocal = false;
+    }
+
+    // === COLEÇÕES ===
+    if (pendentesColecoes.size > 0) {
+      ignorarSyncLocal = true;
+      const promises = [];
+
+      for (const id of pendentesColecoes) {
+        const colecaoLocal = colecoes.find(c => c.id === id);
+        const docRef = colecoesRef.doc(String(id));
+
+        if (colecaoLocal) {
+          const { id: _, ...dados } = colecaoLocal;
+          promises.push(docRef.set(dados));
+        } else {
+          promises.push(docRef.delete().catch(e => {
+            if (e.code !== 'not-found') console.warn('Erro ao apagar coleção', e);
+          }));
+        }
+      }
+
+      await Promise.all(promises);
+      pendentesColecoes.clear();
+      ignorarSyncLocal = false;
+    }
+
+    // === CONFIG ===
+    await userRef.set({ config: config }, { merge: true });
+
+    mostrarStatusSync('online', '☁️ Sincronizado');
+  } catch (e) {
+    console.warn('Erro ao sincronizar:', e);
+    mostrarStatusSync('offline', '⚠️ Erro na sync');
+    ignorarSyncLocal = false;
+  } finally {
+    syncOngoing = false;
+    setTimeout(() => mostrarStatusSync('', ''), 3000);
+  }
+}
+
+async function forcarSincronizacao() {
+  // Cancela o timer pendente e executa imediatamente
+  if (syncTimer) clearTimeout(syncTimer);
+  
+  // Marca TODOS os filmes e coleções como pendentes
+  filmes.forEach(f => pendentesFilmes.add(f.id));
+  colecoes.forEach(c => pendentesColecoes.add(c.id));
+  
+  await executarSync();
+  
+  // Mostra feedback
+  mostrarStatusSync('online', '☁️ Sincronizado!');
+  setTimeout(() => mostrarStatusSync('', ''), 2000);
+}
+
+function mostrarStatusSync(tipo, texto) {
+  const st = document.getElementById('syncStatus');
+  if (!st) return;
+  st.className = 'sync-status ' + tipo;
+  st.textContent = texto;
 }
 
 // ===== FIREBASE: AUTH =====
@@ -672,72 +792,6 @@ async function logout() {
   try { await auth.signOut(); } catch(e) {}
 }
 
-// ===== SINCRONIZAÇÃO COMPLETA (SALVA + APAGA REMOVIDOS) =====
-async function salvarTudoNaNuvem() {
-  if (!dbUser) return;
-  const userRef = db.collection('users').doc(dbUser.uid);
-  const filmesRef = userRef.collection('filmes');
-  const colecoesRef = userRef.collection('colecoes');
-
-  // 1) Apagar filmes na nuvem que não existem mais localmente
-  try {
-    ignorarSyncLocal = true;
-    const snap = await filmesRef.get();
-    const idsLocais = new Set(filmes.map(f => String(f.id)));
-
-    const deletandoFilmes = [];
-    snap.docs.forEach(doc => {
-      if (!idsLocais.has(doc.id)) {
-        deletandoFilmes.push(doc.ref.delete());
-      }
-    });
-    await Promise.all(deletandoFilmes);
-
-    // 2) Salvar/atualizar todos os filmes locais na nuvem
-    const gravandoFilmes = filmes.map(f => {
-      const { id, ...dados } = f;
-      return filmesRef.doc(String(id)).set(dados);
-    });
-    await Promise.all(gravandoFilmes);
-    ignorarSyncLocal = false;
-  } catch (e) {
-    ignorarSyncLocal = false;
-    console.warn('Erro ao sincronizar filmes', e);
-  }
-
-  // 3) Apagar coleções na nuvem que não existem mais localmente
-  try {
-    const snapC = await colecoesRef.get();
-    const idsColecoesLocais = new Set(colecoes.map(c => String(c.id)));
-    const deletandoColecoes = [];
-    snapC.docs.forEach(doc => {
-      if (!idsColecoesLocais.has(doc.id)) {
-        deletandoColecoes.push(doc.ref.delete());
-      }
-    });
-    await Promise.all(deletandoColecoes);
-
-    // 4) Salvar/atualizar todas as coleções locais na nuvem
-    const gravandoColecoes = colecoes.map(c => {
-      const { id, ...dados } = c;
-      return colecoesRef.doc(String(id)).set(dados);
-    });
-    await Promise.all(gravandoColecoes);
-  } catch (e) {
-    console.warn('Erro ao sincronizar coleções', e);
-  }
-
-  // 5) Salvar config na nuvem
-  userRef.set({ config: config }, { merge: true }).catch(e => console.warn('Erro ao salvar config', e));
-
-  // 6) Feedback visual
-  const st = document.getElementById('syncStatus');
-  if (st) {
-    st.className = 'sync-status online';
-    setTimeout(() => { st.className = 'sync-status'; }, 3000);
-  }
-}
-
 auth.onAuthStateChanged(async user => {
   dbUser = user;
   atualizarUIUsuario();
@@ -745,35 +799,56 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     const userRef = db.collection('users').doc(user.uid);
     
+    // Listener de filmes (só atualiza local, NÃO dispara sync)
     if (unsubFilmes) unsubFilmes();
     unsubFilmes = userRef.collection('filmes').onSnapshot(snap => {
       if (ignorarSyncLocal) return;
       const filmesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
-      filmes = filmesNuvem;
-      localStorage.setItem('filmes', JSON.stringify(filmes));
-      renderizar();
+      
+      // Só atualiza se realmente mudou (evita re-render desnecessário)
+      const mudou = filmesNuvem.length !== filmes.length || 
+                    JSON.stringify(filmesNuvem) !== JSON.stringify(filmes);
+      
+      if (mudou || primeiraCarga) {
+        filmes = filmesNuvem;
+        salvarLocal();
+        renderizar();
+      }
     });
     
+    // Listener de coleções
     if (unsubColecoes) unsubColecoes();
     unsubColecoes = userRef.collection('colecoes').onSnapshot(snap => {
       if (ignorarSyncLocal) return;
       const colecoesNuvem = snap.docs.map(d => ({ id: Number(d.id) || d.id, ...d.data() }));
+      
       if (colecoesNuvem.length > 0) {
-        colecoes = colecoesNuvem;
-        localStorage.setItem('colecoes', JSON.stringify(colecoes));
+        const mudou = JSON.stringify(colecoesNuvem) !== JSON.stringify(colecoes);
+        if (mudou || primeiraCarga) {
+          colecoes = colecoesNuvem;
+          salvarLocal();
+          renderizarColecoes();
+        }
       }
     });
     
-    salvarTudoNaNuvem();
+    // Primeira carga: sincroniza tudo uma única vez
+    if (primeiraCarga) {
+      primeiraCarga = false;
+      // Aguarda o onSnapshot carregar os dados antes de sincronizar
+      setTimeout(() => {
+        filmes.forEach(f => pendentesFilmes.add(f.id));
+        colecoes.forEach(c => pendentesColecoes.add(c.id));
+        executarSync();
+      }, 2000);
+    }
     
   } else {
     if (unsubFilmes) { unsubFilmes(); unsubFilmes = null; }
     if (unsubColecoes) { unsubColecoes(); unsubColecoes = null; }
     try {
-      const f = JSON.parse(localStorage.getItem('filmes') || '[]');
-      filmes = f;
-      const c = JSON.parse(localStorage.getItem('colecoes') || '[]');
-      colecoes = c;
+      filmes = JSON.parse(localStorage.getItem('filmes') || '[]');
+      colecoes = JSON.parse(localStorage.getItem('colecoes') || '[]');
     } catch(e) {}
   }
   
@@ -784,7 +859,7 @@ auth.onAuthStateChanged(async user => {
 function aplicarTema(tema) {
   document.body.classList.toggle('light', tema === 'light');
   config.tema = tema;
-  salvar();
+  salvarLocal();
 }
 function alternarTema() {
   aplicarTema(config.tema === 'dark' ? 'light' : 'dark');
@@ -848,9 +923,11 @@ function salvarFilme() {
   } else {
     filmes.push(dados);
   }
-  salvar();
+  salvarLocal();
   fecharModal();
   renderizar();
+  // ✅ Sincroniza apenas este filme
+  marcarMudancaFilme(dados.id);
 }
 
 function editarFilme(id) {
@@ -861,21 +938,30 @@ function editarFilme(id) {
 async function excluirFilme(id) {
   if (!confirm('Excluir este filme?')) return;
   filmes = filmes.filter(f => f.id !== id);
-  salvar();
+  salvarLocal();
   renderizar();
-  if (dbUser) {
-    await db.collection('users').doc(dbUser.uid).collection('filmes').doc(String(id)).delete().catch(e => console.warn(e));
-  }
+  // ✅ Marca como pendente (vai apagar na nuvem no próximo sync)
+  marcarMudancaFilme(id);
 }
 
 function toggleFixar(id) {
   const f = filmes.find(x => x.id === id);
-  if (f) { f.fixado = !f.fixado; salvar(); renderizar(); }
+  if (f) { 
+    f.fixado = !f.fixado; 
+    salvarLocal(); 
+    renderizar(); 
+    marcarMudancaFilme(id); // ✅ só este filme
+  }
 }
 
 function mudarStatus(id, status) {
   const f = filmes.find(x => x.id === id);
-  if (f) { f.status = status; salvar(); renderizar(); }
+  if (f) { 
+    f.status = status; 
+    salvarLocal(); 
+    renderizar(); 
+    marcarMudancaFilme(id); // ✅ só este filme
+  }
 }
 
 function toggleColecaoFilme(filmeId, colecaoId) {
@@ -885,8 +971,9 @@ function toggleColecaoFilme(filmeId, colecaoId) {
   const idx = f.colecoes.indexOf(colecaoId);
   if (idx >= 0) f.colecoes.splice(idx, 1);
   else f.colecoes.push(colecaoId);
-  salvar();
+  salvarLocal();
   renderizar();
+  marcarMudancaFilme(filmeId);
 }
 
 // ===== LIMPAR DUPLICATAS =====
@@ -911,9 +998,12 @@ function limparDuplicatas() {
   }
   
   if (confirm(`🧹 Encontradas ${duplicatas.length} duplicata(s). Deseja remover?\n\nFilmes duplicados:\n${duplicatas.map(f => '• ' + f.titulo).join('\n')}`)) {
+    const idsRemovidos = duplicatas.map(f => f.id);
     filmes = unicos;
-    salvar();
+    salvarLocal();
     renderizar();
+    // ✅ Marca cada um para apagar na nuvem
+    idsRemovidos.forEach(id => marcarMudancaFilme(id));
     alert('✅ Duplicatas removidas!');
   }
 }
@@ -979,21 +1069,21 @@ function statusLabel(s) {
 function criarColecao() {
   const nome = document.getElementById('novaColecao').value.trim();
   if (!nome) return;
-  colecoes.push({ id: ++idCounter, nome });
+  const nova = { id: ++idCounter, nome };
+  colecoes.push(nova);
   document.getElementById('novaColecao').value = '';
-  salvar();
+  salvarLocal();
   renderizarColecoes();
+  marcarMudancaColecao(nova.id); // ✅ só esta coleção
 }
 
 async function excluirColecao(id) {
   if (!confirm('Excluir coleção?')) return;
   colecoes = colecoes.filter(c => c.id !== id);
   filmes.forEach(f => { if (f.colecoes) f.colecoes = f.colecoes.filter(c => c !== id); });
-  salvar();
+  salvarLocal();
   renderizarColecoes();
-  if (dbUser) {
-    await db.collection('users').doc(dbUser.uid).collection('colecoes').doc(String(id)).delete().catch(e => console.warn(e));
-  }
+  marcarMudancaColecao(id); // ✅ marca para apagar na nuvem
 }
 
 function renderizarColecoes() {
@@ -1153,7 +1243,7 @@ function adicionarDoTMDB(m) {
     alert('⚠️ Este filme já está na sua lista!');
     return;
   }
-  filmes.push({
+  const novo = {
     id: ++idCounter,
     titulo: tituloPT,
     capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
@@ -1165,10 +1255,12 @@ function adicionarDoTMDB(m) {
     comentario: '',
     fixado: false,
     colecoes: []
-  });
-  salvar();
+  };
+  filmes.push(novo);
+  salvarLocal();
   fecharModalAPI();
   renderizar();
+  marcarMudancaFilme(novo.id); // ✅ só este filme
 }
 
 // ===== SUGESTÕES =====
@@ -1217,7 +1309,7 @@ function adicionarSugestao(m) {
     alert('⚠️ Este filme já está na sua lista!');
     return;
   }
-  filmes.push({
+  const novo = {
     id: ++idCounter,
     titulo: m.title,
     capa: m.poster_path ? 'https://image.tmdb.org/t/p/w342' + m.poster_path : '',
@@ -1229,9 +1321,11 @@ function adicionarSugestao(m) {
     comentario: '',
     fixado: false,
     colecoes: []
-  });
-  salvar();
+  };
+  filmes.push(novo);
+  salvarLocal();
   renderizar();
+  marcarMudancaFilme(novo.id); // ✅ só este filme
 }
 
 function fecharModalSugestoes() { document.getElementById('modalSugestoes').classList.remove('active'); }
@@ -1281,7 +1375,13 @@ function iniciarRoleta() {
 function marcarAssistidoRoleta() {
   if (filmeRoleta) {
     const f = filmes.find(x => x.id === filmeRoleta.id);
-    if (f) { f.status = 'assistido'; f.data = new Date().toISOString().split('T')[0]; salvar(); renderizar(); }
+    if (f) { 
+      f.status = 'assistido'; 
+      f.data = new Date().toISOString().split('T')[0]; 
+      salvarLocal(); 
+      renderizar(); 
+      marcarMudancaFilme(f.id); // ✅ só este filme
+    }
   }
   fecharRoleta();
 }
@@ -1393,7 +1493,7 @@ async function procurarDesafio() {
     
     const filme = disponiveis[Math.floor(Math.random() * disponiveis.length)];
     
-    filmes.push({
+    const novo = {
       id: ++idCounter,
       titulo: filme.title,
       capa: filme.poster_path ? 'https://image.tmdb.org/t/p/w342' + filme.poster_path : '',
@@ -1405,9 +1505,11 @@ async function procurarDesafio() {
       comentario: '',
       fixado: false,
       colecoes: []
-    });
-    salvar();
+    };
+    filmes.push(novo);
+    salvarLocal();
     renderizar();
+    marcarMudancaFilme(novo.id); // ✅ só este filme
     
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -1484,8 +1586,12 @@ function carregarCompartilhado() {
       if (confirm(`📥 Ver coleção compartilhada com ${d.filmes.length} filmes?\n\n(OK = substituir sua coleção atual, Cancelar = manter a sua)`)) {
         filmes = d.filmes;
         colecoes = d.colecoes || [];
-        salvar();
+        salvarLocal();
         renderizar();
+        // ✅ Marca tudo para sincronizar
+        filmes.forEach(f => pendentesFilmes.add(f.id));
+        colecoes.forEach(c => pendentesColecoes.add(c.id));
+        agendarSync();
       }
       return true;
     }
@@ -1512,9 +1618,13 @@ function importarDados(e) {
       if (d.filmes) filmes = d.filmes;
       if (d.colecoes) colecoes = d.colecoes;
       if (d.config) config = { ...config, ...d.config };
-      salvar();
+      salvarLocal();
       aplicarTema(config.tema);
       renderizar();
+      // ✅ Marca tudo para sincronizar
+      filmes.forEach(f => pendentesFilmes.add(f.id));
+      colecoes.forEach(c => pendentesColecoes.add(c.id));
+      agendarSync();
       alert('✅ Importado com sucesso!');
     } catch (err) { alert('Arquivo inválido'); }
   };
@@ -1531,9 +1641,13 @@ function fecharModalConfig() { document.getElementById('modalConfig').classList.
 function salvarConfig() {
   config.tmdbKey = document.getElementById('configTmdbKey').value.trim();
   config.pais = document.getElementById('configPais').value;
-  salvar();
+  salvarLocal();
   fecharModalConfig();
   carregarFilmeDia();
+  // ✅ Sincroniza config
+  if (dbUser) {
+    db.collection('users').doc(dbUser.uid).set({ config: config }, { merge: true });
+  }
 }
 
 // ===== PWA SERVICE WORKER =====
